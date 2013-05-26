@@ -17,8 +17,25 @@
 # GNU General Public License for more details.
 #
 # See: http://www.gnu.org/copyleft/gpl.html
+# Additions by Marius Boeru <mboeru@gmail.com>
+# * 26.05.2013 Added Support for multiple nagios/icinga/shinken livestatus Instances
+# * TODO: - Support for TCP Livestatus sockes
+#	  - Support to report bad Instance Connections ( Now it defaults to 100% )
+#	  - Support for Instance priorities (Sort alert order based on Instace)
 
-$socket_path = "/opt/monitor/var/rw/live";
+
+date_default_timezone_set('Europe/Bucharest');
+
+
+$monitoring_instances = array( 
+	# socat unix-listen:/tmp/sockets/socatmonlive,reuseaddr,fork,mode=777 TCP-CONNECT:XXX.XXX.XXX.XXX:6557 &
+	array(	"name"	=>	"SOCAT-MON",
+		"livestatuspath"	=>	"/tmp/sockets/socatmonlive"
+	),
+	#array(	"name"	=>	"LOCALMON",
+	#	"livestatuspath"	=>	"/usr/local/icinga/var/rw/live",
+	#)
+);
 
 $custom_filters = array(
   'host_name ~ ',
@@ -75,12 +92,12 @@ function readSocket($len) {
     return $socketData;
 }
 
-function queryLivestatus($query) {
+function queryLivestatus($query,$socket) {
     global $sock;
 	global $socket_path;
 	
     $sock = socket_create(AF_UNIX, SOCK_STREAM, 0);
-    $result = socket_connect($sock, $socket_path);
+    $result = socket_connect($sock, $socket);
 
     socket_write($sock, $query . "\n\n");
 
@@ -118,8 +135,12 @@ function queryLivestatus($query) {
 
             <?php 
 
-            $hosts = array();
+$hosts = array();
+
+
+
             while ( list(, $filter) = each($custom_filters) ) {
+		foreach ($monitoring_instances as $instance) {
 
 $query = <<<"EOQ"
 GET hosts
@@ -134,23 +155,25 @@ OutputFormat: json
 ResponseHeader: fixed16
 EOQ;
 
-               $json=queryLivestatus($query);
+               $json=queryLivestatus($query,$instance['livestatuspath']);
                $tmp = json_decode($json, true);
                if ( count($tmp) ) {
                   $hosts = array_merge($hosts, $tmp);
                }
             }
+	}
             asort($hosts);
-
             $save = "";
             $output = "";
             while ( list(, $row) = each($hosts) ) {
-                $output .=  "<tr class=\"critical\"><td>".$row[0]."</td><td>".$row[1]."</td></tr>";
+                $output .=  "<tr class=\"critical\"><td><center>".$instance['name']."</center></td><td>".$row[0]."</td><td>".$row[1]."</td></tr>";
                 $save .= $row[0];
             }
+
             if($save):
             ?>
             <tr class="dash_table_head">
+		<th>Instance</th>
                 <th>Hostname</th>
                 <th>Alias</th>
             </tr>
@@ -180,8 +203,12 @@ EOQ;
             $hosts_unreach = 0;
             $total_hosts = 0;
 
+
+
             reset($custom_filters);
+
             while ( list(, $filter) = each($custom_filters) ) {
+		foreach ($monitoring_instances as $instance) {
 $query = <<<"EOQ"
 GET hosts
 Filter: $filter
@@ -194,13 +221,14 @@ OutputFormat: json
 ResponseHeader: fixed16
 EOQ;
 
-               $json=queryLivestatus($query);
+               $json=queryLivestatus($query,$instance['livestatuspath']);
                $stats = json_decode($json, true);
 
                $hosts_down += $stats[0][0];
                $hosts_unreach += $stats[0][1];
                $total_hosts += $stats[0][4];
             }
+	}
 
             $hosts_down_pct = round($hosts_down / $total_hosts * 100, 2);
             $hosts_unreach_pct = round($hosts_unreach / $total_hosts * 100, 2);
@@ -218,6 +246,7 @@ EOQ;
 
             reset($custom_filters);
             while ( list(, $filter) = each($custom_filters) ) {
+		foreach ($monitoring_instances as $instance) {
 $query = <<<"EOQ"
 GET services
 Filter: $filter
@@ -232,7 +261,7 @@ OutputFormat: json
 ResponseHeader: fixed16
 EOQ;
 
-               $json=queryLivestatus($query);
+               $json=queryLivestatus($query,$instance['livestatuspath']);
                $stats = json_decode($json, true);
 
                $services_ok += $stats[0][0];
@@ -242,13 +271,35 @@ EOQ;
                $services_not_ok += $stats[0][4];
                $total_services += $stats[0][5];
             }
+	}
 
             $services_critical_pct = round($services_critical / $total_services * 100, 2);
             $services_warning_pct = round($services_warning / $total_services * 100, 2);
             $services_unknown_pct = round($services_unknown / $total_services * 100, 2);
             $services_ok_pct = round($services_ok / $total_services * 100, 2);
+
+
+# Check UP Monitoring Instances
+$moncounter==0;
+foreach($monitoring_instances as $instance) {
+
+        $sock = stream_socket_client('unix://'.$instance['livestatuspath'], $errno, $errstr);
+
+        if ($sock) {
+		$moncounter++;
+        }
+}
             
-            ?>
+
+	     if ($moncounter < count($monitoring_instances)) {
+		#de scris cand e picat un monitoring instance	
+           	} 
+	?>
+
+	    <tr class="ok total_hosts_up">
+		<td>Monitoring Instances</td>
+		<td><?php echo count($monitoring_instances); ?></td>
+		<td>100%</td>
             <tr class="ok total_hosts_up">
                 <td>Hosts up</td>
                 <td><?php print $hosts_up ?>/<?php print $total_hosts ?></td>
@@ -321,8 +372,10 @@ EOQ;
 
             reset($custom_filters);
             $services = array();
+	//echo "<pre>";
             while ( list(, $filter) = each($custom_filters) ) {
 
+		foreach ($monitoring_instances as $instance) {
 $query = <<<"EOQ"
 GET services
 Columns: host_name description state plugin_output last_hard_state_change last_check
@@ -339,12 +392,23 @@ OutputFormat: json
 ResponseHeader: fixed16
 EOQ;
 
-               $json=queryLivestatus($query);
+
+               $json=queryLivestatus($query,$instance['livestatuspath']);
                $tmp = json_decode($json, true);
-               if ( count($tmp) ) {
-                  $services = array_merge($services, $tmp);
+		$tmp1 = array();
+		foreach ($tmp as $one) {
+	       		array_push($one, $instance['name']);
+			//print_r($one);
+			array_push($tmp1, $one);
+		}
+		//print_r($tmp1);
+               if ( count($tmp1) ) {
+                  $services = array_merge($services, $tmp1);
                }
             }
+
+	//print_r($services);
+}
             usort($services, "sort_by_state");
 
             $save = "";
@@ -361,16 +425,18 @@ EOQ;
 		$duration = _print_duration($row[4], time());
 		$date = date("Y-m-d H:i:s", $row[5]);
 
-		$output .= "<tr class=\"".$class."\"><td>".$row[0]."</td><td>".$row[1]."</td>";
+		$output .= "<tr class=\"".$class."\"><td>".$row[6]."</td><td>".$row[0]."</td><td>".$row[1]."</td>";
 		$output .= "<td>".$row[3]."</td>";
 		$output .= "<td class=\"date date_statechange\">".$duration."</td>";
 		$output .= "<td class=\"date date_lastcheck\">".$date."</td></tr>\n";
 		$save .= $row[0];
 	    };
-
             if ($save):
             ?>
             <tr class="dash_table_head">
+		<th>
+		    Instance
+		</th>
                 <th>
                     Host
                 </th>

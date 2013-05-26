@@ -19,12 +19,12 @@
 # See: http://www.gnu.org/copyleft/gpl.html
 
     $refreshvalue = 10; //value in seconds to refresh page
-    $pagetitle = "op5 Monitor Dashboard";
+    $pagetitle = "Monitor Dashboard";
 ?>
 <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
 <html>
     <head>
-		<link type="image/ico" rel="icon" href="op5.ico" />
+		<link type="image/ico" rel="icon" href="/favicon.ico" />
         <title><?php echo($pagetitle); ?></title>
         <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js">
         </script>
@@ -58,7 +58,7 @@
             
             function updateNagiosData(block){
                 $("#loading").fadeIn(200);
-    			block.load("./merlin.php", function(response){
+    			block.load("./merlin2.php", function(response){
                     $(this).html(response);
                     $("#loading").fadeOut(200);
                     createTimeStamp();
