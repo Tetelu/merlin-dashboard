@@ -49,6 +49,7 @@ In Monitor 6, we instead use Livestatus to access status data, because it is sig
 
 Multi instance monitoring was added so you can create local unix sockets using socat and monitor using livestatus through these sockets. This was tested with both Nagios and Icinga
 For multi instances edit merlin2.php and add instance in monitoring_instances array like so:
+```php
 $monitoring_instances = array(
         # socat unix-listen:/tmp/sockets/socatmonlive,reuseaddr,fork,mode=777 TCP-CONNECT:XXX.XXX.XXX.XXX:6557 &
         array(  "name"  =>      "SOCAT-MON",
@@ -58,5 +59,6 @@ $monitoring_instances = array(
                "livestatuspath"        =>      "/usr/local/icinga/var/rw/live",
         )
 );
+```
 
 Before adding create socat unix socket with the commented command
