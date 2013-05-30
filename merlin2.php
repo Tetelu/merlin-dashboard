@@ -157,8 +157,14 @@ EOQ;
 
                $json=queryLivestatus($query,$instance['livestatuspath']);
                $tmp = json_decode($json, true);
-               if ( count($tmp) ) {
-                  $hosts = array_merge($hosts, $tmp);
+		$tpm1 = array();
+	     	foreach ($tmp as $one) {
+                        array_push($one, $instance['name']);
+                        //print_r($one);
+                        array_push($tmp1, $one);
+                }  
+               if ( count($tmp1) ) {
+                  $hosts = array_merge($hosts, $tmp1);
                }
             }
 	}
@@ -166,7 +172,7 @@ EOQ;
             $save = "";
             $output = "";
             while ( list(, $row) = each($hosts) ) {
-                $output .=  "<tr class=\"critical\"><td><center>".$instance['name']."</center></td><td>".$row[0]."</td><td>".$row[1]."</td></tr>";
+                $output .=  "<tr class=\"critical\"><td><center>".$row[2]."</center></td><td>".$row[0]."</td><td>".$row[1]."</td></tr>";
                 $save .= $row[0];
             }
 
