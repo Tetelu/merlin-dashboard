@@ -286,7 +286,7 @@ EOQ;
 
 
 # Check UP Monitoring Instances
-$moncounter==0;
+$moncounter=0;
 foreach($monitoring_instances as $instance) {
 
         $sock = stream_socket_client('unix://'.$instance['livestatuspath'], $errno, $errstr);
@@ -298,7 +298,7 @@ foreach($monitoring_instances as $instance) {
             
 
 	     if ($moncounter < count($monitoring_instances)) {
-		#de scris cand e picat un monitoring instance	
+		# To write code that lists instance as down
            	} 
 	?>
 

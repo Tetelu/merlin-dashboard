@@ -61,4 +61,4 @@ $monitoring_instances = array(
 );
 ```
 
-Before adding create socat unix socket with the commented command
+Before adding new instances, create socat unix socket with the commented command
