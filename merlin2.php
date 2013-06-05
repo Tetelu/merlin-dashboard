@@ -382,6 +382,8 @@ foreach($monitoring_instances as $instance) {
             while ( list(, $filter) = each($custom_filters) ) {
 
 		foreach ($monitoring_instances as $instance) {
+# Add this filter in order not to show service alerts for down hosts
+#Filter: host_acknowledged = 0
 $query = <<<"EOQ"
 GET services
 Columns: host_name description state plugin_output last_hard_state_change last_check
@@ -390,7 +392,6 @@ Filter: scheduled_downtime_depth = 0
 Filter: host_scheduled_downtime_depth = 0
 Filter: service_scheduled_downtime_depth = 0
 Filter: in_notification_period = 1
-Filter: host_acknowledged = 0
 Filter: acknowledged = 0
 Filter: state != 0
 Filter: state_type = 1
